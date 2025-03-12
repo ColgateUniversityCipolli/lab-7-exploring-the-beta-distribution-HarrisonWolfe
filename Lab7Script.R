@@ -1,5 +1,6 @@
 library(tidyverse)
 library(gridExtra)
+library(e1071)
 
 tests = tibble()
 
@@ -84,13 +85,20 @@ beta.summarize.noncenter = function(a,b){
   variance = beta.moment(a,b,2,T)
   skewness = (beta.moment(a,b,3,T))/(beta.moment(a,b,2,T)^(3/2))
   excess_kurtosis = beta.moment(a,b,4,T)/((beta.moment(a,b,2,T))^2) - 3
-  return(tibble(a = a, b = b, mean = mean, variance = variance, skewness = skewness, excess_kurtosis = excess_kurtosis))
+  return(tibble(a = a, b = b, mean = mean, variance = variance, skewness = skewness, excess_kurtosis = excess_kurtosis, Method = "Derived"))
 }
 
 derived25 = beta.summarize.noncenter(2,5)
 derived55 = beta.summarize.noncenter(5,5)
 derived52 = beta.summarize.noncenter(5,2)
 derived.5.5 = beta.summarize.noncenter(.5,.5)
+
+beta.total = beta.total |>
+  rbind(derived25) |>
+  rbind(derived55) |>
+  rbind(derived52) |>
+  rbind(derived.5.5) |>
+  unique()
 
 
 
@@ -116,7 +124,7 @@ beta.df = tibble(sample = beta.sample)
 
 beta.pdf = tibble(x = x, beta = dbeta(x, alpha, beta))
 
-summary.statistics.of.beta.25 = tibble(beta.sample) |>
+summary.statistics.of.beta25 = tibble(beta.sample) |>
   summarize(sample.mean = mean(beta.sample),
             sample.variance = var(beta.sample),
             sample.sd = sd(beta.sample),
@@ -150,7 +158,7 @@ beta.df = tibble(sample = beta.sample)
 
 beta.pdf = tibble(x = x, beta = dbeta(x, alpha, beta))
 
-summary.statistics.of.beta.55 = tibble(beta.sample) |>
+summary.statistics.of.beta55 = tibble(beta.sample) |>
   summarize(sample.mean = mean(beta.sample),
             sample.variance = var(beta.sample),
             sample.sd = sd(beta.sample),
@@ -183,7 +191,7 @@ beta.df = tibble(sample = beta.sample)
 
 beta.pdf = tibble(x = x, beta = dbeta(x, alpha, beta))
 
-summary.statistics.of.beta.52 = tibble(beta.sample) |>
+summary.statistics.of.beta52 = tibble(beta.sample) |>
   summarize(sample.mean = mean(beta.sample),
             sample.variance = var(beta.sample),
             sample.sd = sd(beta.sample),
@@ -236,13 +244,161 @@ plot4 = ggplot(beta.df)+
 
 grid.arrange(plot1,plot2,plot3,plot4,ncol = 2)
 
+total.summary = summary.statistics.of.beta.0.5.0.5 |>
+  rbind(summary.statistics.of.beta25) |>
+  rbind(summary.statistics.of.beta55) |>
+  rbind(summary.statistics.of.beta52)
 
 #STEP 4############
+library(tidyverse)
 library(cumstats)
+library(patchwork)
 
 set.seed(7272)
 beta.sample = rbeta(n=500, shape1 = 2, shape2 = 5)
 
-ggplot(tibble(beta.sample))+
-  geom_line(x = 1:500, y = cummean(beta.sample))
+# Calculate cumulative statistics
+cum.statistics = tibble(
+  cum_mean = cummean(beta.sample),
+  cum_skew = cumskew(beta.sample),
+  cum_kurt = cumkurt(beta.sample) - 3,  # Subtract 3 for excess kurtosis
+  cum_var = cumvar(beta.sample)
+) |>
+  mutate(n = row_number())
 
+
+mean.plot = ggplot(cum.statistics, aes(x=n,y=cum_mean))+
+  geom_line(color = "blue")+
+  geom_hline(yintercept = beta25$mean, linetype = "dashed", color = "red")+
+  labs(x = "Sample Size", y = "Mean")
+
+skew.plot = ggplot(cum.statistics, aes(x=n,y=cum_skew))+
+  geom_line(color = "blue")+
+  geom_hline(yintercept = beta25$skewness, linetype = "dashed", color = "red")+
+  labs(x = "Sample Size", y = "Skewness")
+
+kurt.plot = ggplot(cum.statistics, aes(x=n,y=cum_kurt))+
+  geom_line(color = "blue")+
+  geom_hline(yintercept = beta25$excess_kurtosis, linetype = "dashed", color = "red")+
+  labs(x = "Sample Size", y = "Kurtosis")
+
+var.plot = ggplot(cum.statistics, aes(x=n,y=cum_var))+
+  geom_line(color = "blue")+
+  geom_hline(yintercept = beta25$variance, linetype = "dashed", color = "red")+
+  labs(x = "Sample Size", y = "Variance")
+
+
+(mean.plot + skew.plot) / (kurt.plot + var.plot)
+
+
+
+final_df <- tibble()
+
+for (i in 2:50) {
+  set.seed(7272 + i)
+  
+
+  beta_sample <- rbeta(n = 500, shape1 = 2, shape2 = 5)
+  
+  # Compute cumulative statistics
+  simulation_cum_statistics <- tibble(
+    n = seq_along(beta_sample),
+    cum_mean = cummean(beta_sample),  
+    cum_var = cumvar(beta_sample),  
+    cum_skew = cumskew(beta_sample),  
+    cum_kurt = cumkurt(beta_sample)-3,  
+    simulation = i  
+  )
+  
+  final_df = final_df |>
+    bind_rows(simulation_cum_statistics)
+  
+}
+
+#PLOTTING
+
+total.mean.plot = ggplot(final_df, aes(x=n,y=cum_mean,color = factor(simulation)))+
+  geom_line()+
+  geom_hline(yintercept = beta25$mean, linetype = "dashed", color = "red")+
+  labs(x = "Sample Size", y = "Mean")+
+  guides(color = "none")+
+  theme_minimal()
+
+total.skew.plot = ggplot(final_df, aes(x=n,y=cum_skew,color = factor(simulation)))+
+  geom_line()+
+  geom_hline(yintercept = beta25$skewness, linetype = "dashed", color = "red")+
+  labs(x = "Sample Size", y = "Skewness")+
+  guides(color = "none")+
+  theme_minimal()
+
+total.kurt.plot = ggplot(final_df, aes(x=n,y=cum_kurt,color = factor(simulation)))+
+  geom_line()+
+  geom_hline(yintercept = beta25$excess_kurtosis, linetype = "dashed", color = "red")+
+  labs(x = "Sample Size", y = "Kurtosis")+
+  guides(color = "none")+
+  theme_minimal()
+
+total.var.plot = ggplot(final_df, aes(x=n,y=cum_var, color = factor(simulation)))+
+  geom_line()+
+  geom_hline(yintercept = beta25$variance, linetype = "dashed", color = "red")+
+  labs(x = "Sample Size", y = "Variance")+
+  guides(color = "none")+
+  theme_minimal()
+
+(total.mean.plot + total.skew.plot) / (total.kurt.plot + total.var.plot)
+
+
+#STEP 5
+
+simulated.data = tibble()
+statistics.dist = tibble()
+
+for(i in 1:1000){
+  
+  set.seed(7272 + i)
+  
+  
+  beta_sample <- rbeta(n = 500, shape1 = 2, shape2 = 5)
+  
+  # Compute cumulative statistics
+  simulated.data <- tibble(
+    mean = mean(beta_sample),  
+    var = var(beta_sample),  
+    skew = skewness(beta_sample),  
+    kurt = kurtosis(beta_sample)-3,  
+    simulation = i  
+  )
+  
+  statistics.dist = statistics.dist |>
+    bind_rows(simulated.data)
+}
+
+
+
+#PLOTTING THIS DATA
+
+mean.dist = ggplot(statistics.dist, aes(x=mean))+
+  geom_histogram(fill = "blue")+
+  theme_minimal()+
+  labs(x= "Mean", y = "Occurances")+
+  geom_density()
+
+var.dist = ggplot(statistics.dist, aes(x=var))+
+  geom_histogram(fill = "blue")+
+  theme_minimal()+
+  labs(x= "Variance", y = "Occurances")+
+  geom_density()
+
+kurt.dist = ggplot(statistics.dist, aes(x=kurt))+
+  geom_histogram(fill = "blue")+
+  theme_minimal()+
+  labs(x= "Excess Kurtosis", y = "Occurances")+
+  geom_density()
+
+skew.dist = ggplot(statistics.dist, aes(x=skew))+
+  geom_histogram(fill = "blue")+
+  theme_minimal()+
+  labs(x= "Skewness", y = "Occurances")+
+  geom_density()
+
+(mean.dist + skew.dist) / (kurt.dist + skew.dist)
