@@ -3,6 +3,7 @@ library(gridExtra)
 library(e1071)
 library(patchwork)
 library(cumstats)
+library(nleqslv)
 
 tests = tibble()
 
@@ -395,3 +396,166 @@ skew.dist = ggplot(statistics.dist, aes(x=skew,y=after_stat(density)))+
   geom_density(aes(x=skew))
 
 (mean.dist + skew.dist) / (kurt.dist + var.dist)
+
+
+
+
+#TASK 6 LAB 8!!!!!
+
+death.data = read_csv("realreal.csv") |>
+  mutate("Deaths" = get("2022")) |>
+  select("Country Name", "Deaths") |>
+  mutate(prop.death = get("Deaths")/1000) |>
+  filter(!is.na(prop.death))
+
+mombeta = function(par,data){
+  alpha = par[1]
+  beta  = par[2]
+  
+  EX =  mean(data, na.rm = T)
+  EX2 = mean(data^2, na.rm = T)
+  
+  m1 = (alpha)/(alpha + beta)
+  m2 = ((alpha+1)*(alpha)) / ((alpha + beta + 1)*(alpha + beta))
+  
+  return(c(EX - m1, EX2 - m2))
+}
+ 
+
+moms = nleqslv(x = c(0.5,0.5),
+        fn = mombeta,
+        data = death.data$prop.death) 
+
+
+alpha.hat.mom <- moms$x[1]
+beta.hat.mom <- moms$x[2]
+
+llbeta <- function(data, par, neg=F){
+  alpha <- par[1]
+  beta <- par[2]
+  
+  loglik <- sum(log(dbeta(x=data, shape1=alpha, shape2=beta)),na.rm = T)
+  
+  return(ifelse(neg, -loglik, loglik))
+}
+
+(mles <- optim(par = c(0.5,0.5),
+               fn = llbeta,
+               data = death.data$prop.death,
+               neg=T))
+alpha.hat.mle <- mles$par[1]
+beta.hat.mle <- mles$par[2]
+
+mleplot <- tibble(x = seq(-0, 0.02, length.out = 1000)) |> 
+  mutate(y = dbeta(x, alpha.hat.mle, beta.hat.mle))
+
+momplot <- tibble(x = seq(-0, 0.02, length.out = 1000)) |> 
+  mutate(y = dbeta(x, alpha.hat.mom, beta.hat.mom))
+
+                   
+                 
+
+ggplot()+
+  geom_histogram(data = death.data, aes(x=prop.death, y = after_stat(density),color = "lightgrey"), bins = 36)+
+  geom_line(data = mleplot, aes(x=x,y=y,color = "MLE Estimate"))+
+  geom_line(data = momplot, aes(x=x,y=y,color = "MOM Estimate"))+
+  scale_color_manual(values = c("MLE Estimate" = "blue",
+                                "MOM Estimate" = "red"))+
+  theme_minimal()+
+  xlab("Proportion of Deaths")+
+  ylab("Density")
+
+
+#TASK 8
+
+
+simulation = tibble()
+
+for(i in 1:1000){
+  set.seed(7272 + i)
+  
+  current.sample = rbeta(266, 8, 950)
+  
+  mles.looped <- optim(par = c(0.5,0.5),
+                 fn = llbeta,
+                 data = current.sample,
+                 neg=T)
+  alpha.hat.mle.store <- mles.looped$par[1]
+  beta.hat.mle.store <- mles.looped$par[2]
+  
+  
+  moms.looped = nleqslv(x = c(0.5,0.5),
+                 fn = mombeta,
+                 data = current.sample) 
+  
+  alpha.hat.mom.store <- moms.looped$x[1]
+  beta.hat.mom.store <- moms.looped$x[2]
+  
+  
+  in.simulation = tibble(mle.alpha = alpha.hat.mle.store,
+                         mle.beta = beta.hat.mle.store,
+                         mom.alpha = alpha.hat.mom.store,
+                         mom.beta = beta.hat.mom.store,
+                         simulation = i)
+  
+  simulation = simulation |>
+    bind_rows(in.simulation) |>
+    unique()
+}
+
+
+mle.alpha.plot = ggplot(simulation)+
+  geom_density(aes(x=mle.alpha))+
+  theme_minimal()+
+  xlab("MLE Alphas")+
+  ylab("Density")+
+  geom_hline(yintercept = 0)
+
+mle.beta.plot = ggplot(simulation)+
+  geom_density(aes(x=mle.beta))+
+  theme_minimal()+
+  xlab("MLE Betas")+
+  ylab("Density")+
+  geom_hline(yintercept = 0)
+
+mom.alpha.plot = ggplot(simulation)+
+  geom_density(aes(x=mom.alpha))+
+  theme_minimal()+
+  xlab("MOM Alphas")+
+  ylab("Density")+
+  geom_hline(yintercept = 0)
+
+mom.beta.plot = ggplot(simulation)+
+  geom_density(aes(x=mom.beta))+
+  theme_minimal()+
+  xlab("MOM Betas")+
+  ylab("Density")+
+  geom_hline(yintercept = 0)
+
+(mle.alpha.plot + mle.beta.plot) / (mom.alpha.plot + mom.beta.plot)
+
+
+a.theta = 8
+b.theta = 950
+
+names = c("alpha.mle", "alpha.mom", "beta.mle", "beta.mom")
+
+bias = c(mean(simulation$mle.alpha) - a.theta,
+mean(simulation$mom.alpha) - a.theta,
+mean(simulation$mle.beta) - b.theta,
+mean(simulation$mom.beta) - b.theta)
+
+
+presicion = c(1/var(simulation$mle.alpha),
+1/var(simulation$mom.alpha),
+1/var(simulation$mle.beta),
+1/var(simulation$mom.beta))
+
+MSE = c(var(simulation$mle.alpha) + (mean(simulation$mle.alpha) - a.theta)^2,
+var(simulation$mom.alpha) + (mean(simulation$mom.alpha) - a.theta)^2,
+var(simulation$mle.beta) + (mean(simulation$mle.beta) - b.theta)^2,
+var(simulation$mom.beta) + (mean(simulation$mom.beta) - b.theta)^2)
+
+
+predictors = tibble(names,bias,presicion,MSE)
+
