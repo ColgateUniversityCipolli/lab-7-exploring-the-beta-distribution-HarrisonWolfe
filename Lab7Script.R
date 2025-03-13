@@ -1,6 +1,8 @@
 library(tidyverse)
 library(gridExtra)
 library(e1071)
+library(patchwork)
+library(cumstats)
 
 tests = tibble()
 
@@ -110,8 +112,6 @@ beta.total = beta.total |>
 
 
 #BETA A = 2 B = 5
-library(tidyverse)
-library(e1071)
 set.seed(7272) # Set seed so we all get the same results.
 sample.size <- 500 # Specify sample details
 alpha <- 2
@@ -133,7 +133,7 @@ summary.statistics.of.beta25 = tibble(beta.sample) |>
 
 
 plot1 = ggplot(beta.df)+
-  geom_histogram(aes(x = sample, y = after_stat(density)), bins = 34, fill = "purple")+
+  geom_histogram(aes(x = sample, y = after_stat(density)), bins = 30, fill = "purple")+
   geom_density(aes(x=sample, color = "Density of Sample"))+
   geom_hline(yintercept = 0)+
   xlab("Sample")+
@@ -144,8 +144,6 @@ plot1 = ggplot(beta.df)+
   
 
 #BETA A = 5 B = 5
-library(tidyverse)
-library(e1071)
 set.seed(7272) # Set seed so we all get the same results.
 sample.size <- 500 # Specify sample details
 alpha <- 5
@@ -167,7 +165,7 @@ summary.statistics.of.beta55 = tibble(beta.sample) |>
 
 
 plot2 = ggplot(beta.df)+
-  geom_histogram(aes(x = sample, y = after_stat(density)), bins = 34, fill = "purple")+
+  geom_histogram(aes(x = sample, y = after_stat(density)), bins = 30, fill = "purple")+
   geom_density(aes(x=sample, color = "Density of Sample"))+
   geom_hline(yintercept = 0)+
   xlab("Sample")+
@@ -177,8 +175,6 @@ plot2 = ggplot(beta.df)+
   guides(color = guide_legend(title = NULL))
             
 #BETA A = 5 B = 2
-library(tidyverse)
-library(e1071)
 set.seed(7272) # Set seed so we all get the same results.
 sample.size <- 500 # Specify sample details
 alpha <- 5
@@ -200,7 +196,7 @@ summary.statistics.of.beta52 = tibble(beta.sample) |>
 
 
 plot3 = ggplot(beta.df)+
-  geom_histogram(aes(x = sample, y = after_stat(density)), bins = 34, fill = "purple")+
+  geom_histogram(aes(x = sample, y = after_stat(density)), bins = 30, fill = "purple")+
   geom_density(aes(x=sample, color = "Density of Sample"))+
   geom_hline(yintercept = 0)+
   xlab("Sample")+
@@ -210,8 +206,6 @@ plot3 = ggplot(beta.df)+
   guides(color = guide_legend(title = NULL))
  
 #BETA A = 0.5 B = 0.5
-library(tidyverse)
-library(e1071)
 set.seed(7272) # Set seed so we all get the same results.
 sample.size <- 500 # Specify sample details
 alpha <- 0.5
@@ -233,7 +227,7 @@ summary.statistics.of.beta.0.5.0.5 = tibble(beta.sample) |>
 
 
 plot4 = ggplot(beta.df)+
-  geom_histogram(aes(x = sample, y = after_stat(density)), bins = 34, fill = "purple")+
+  geom_histogram(aes(x = sample, y = after_stat(density)), bins = 30, fill = "purple")+
   geom_density(aes(x=sample, color = "Density of Sample"))+
   geom_hline(yintercept = 0)+
   xlab("Sample")+
@@ -242,7 +236,7 @@ plot4 = ggplot(beta.df)+
   geom_line(data = beta.pdf, aes(x = x, y = beta, color = "Beta (0.5,0.5)"))+
   guides(color = guide_legend(title = NULL))
 
-grid.arrange(plot1,plot2,plot3,plot4,ncol = 2)
+(plot1 + plot2) / (plot3 + plot4)
 
 total.summary = summary.statistics.of.beta.0.5.0.5 |>
   rbind(summary.statistics.of.beta25) |>
@@ -250,9 +244,6 @@ total.summary = summary.statistics.of.beta.0.5.0.5 |>
   rbind(summary.statistics.of.beta52)
 
 #STEP 4############
-library(tidyverse)
-library(cumstats)
-library(patchwork)
 
 set.seed(7272)
 beta.sample = rbeta(n=500, shape1 = 2, shape2 = 5)
@@ -311,7 +302,8 @@ for (i in 2:50) {
   )
   
   final_df = final_df |>
-    bind_rows(simulation_cum_statistics)
+    bind_rows(simulation_cum_statistics) |>
+    unique()
   
 }
 
@@ -370,35 +362,36 @@ for(i in 1:1000){
   )
   
   statistics.dist = statistics.dist |>
-    bind_rows(simulated.data)
+    bind_rows(simulated.data) |>
+    unique()
 }
 
 
 
 #PLOTTING THIS DATA
 
-mean.dist = ggplot(statistics.dist, aes(x=mean))+
+mean.dist = ggplot(statistics.dist, aes(x=mean,y=after_stat(density)))+
   geom_histogram(fill = "blue")+
   theme_minimal()+
   labs(x= "Mean", y = "Occurances")+
-  geom_density()
+  geom_density(aes(x=mean))
 
-var.dist = ggplot(statistics.dist, aes(x=var))+
+var.dist = ggplot(statistics.dist, aes(x=var,y=after_stat(density)))+
   geom_histogram(fill = "blue")+
   theme_minimal()+
   labs(x= "Variance", y = "Occurances")+
-  geom_density()
+  geom_density(aes(x=var))
 
-kurt.dist = ggplot(statistics.dist, aes(x=kurt))+
-  geom_histogram(fill = "blue")+
+kurt.dist = ggplot(statistics.dist)+
+  geom_histogram(aes(x=kurt, y = after_stat(density)),fill = "blue",bins=28)+
   theme_minimal()+
   labs(x= "Excess Kurtosis", y = "Occurances")+
-  geom_density()
+  geom_density(aes(x=kurt))
 
-skew.dist = ggplot(statistics.dist, aes(x=skew))+
-  geom_histogram(fill = "blue")+
+skew.dist = ggplot(statistics.dist, aes(x=skew,y=after_stat(density)))+
+  geom_histogram(fill = "blue",bins=26)+
   theme_minimal()+
   labs(x= "Skewness", y = "Occurances")+
-  geom_density()
+  geom_density(aes(x=skew))
 
-(mean.dist + skew.dist) / (kurt.dist + skew.dist)
+(mean.dist + skew.dist) / (kurt.dist + var.dist)
