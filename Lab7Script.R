@@ -310,29 +310,29 @@ for (i in 2:50) {
 
 #PLOTTING
 
-total.mean.plot = ggplot(final_df, aes(x=n,y=cum_mean,color = factor(simulation)))+
-  geom_line()+
+total.mean.plot = ggplot(final_df, aes(x=n,y=cum_mean, group=simulation))+
+  geom_line(color = final_df$simulation)+
   geom_hline(yintercept = beta25$mean, linetype = "dashed", color = "red")+
   labs(x = "Sample Size", y = "Mean")+
   guides(color = "none")+
   theme_minimal()
 
-total.skew.plot = ggplot(final_df, aes(x=n,y=cum_skew,color = factor(simulation)))+
-  geom_line()+
+total.skew.plot = ggplot(final_df, aes(x=n,y=cum_skew,group=simulation))+
+  geom_line(color = final_df$simulation)+
   geom_hline(yintercept = beta25$skewness, linetype = "dashed", color = "red")+
   labs(x = "Sample Size", y = "Skewness")+
   guides(color = "none")+
   theme_minimal()
 
-total.kurt.plot = ggplot(final_df, aes(x=n,y=cum_kurt,color = factor(simulation)))+
-  geom_line()+
+total.kurt.plot = ggplot(final_df, aes(x=n,y=cum_kurt,group=simulation))+
+  geom_line(color = final_df$simulation)+
   geom_hline(yintercept = beta25$excess_kurtosis, linetype = "dashed", color = "red")+
   labs(x = "Sample Size", y = "Kurtosis")+
   guides(color = "none")+
   theme_minimal()
 
-total.var.plot = ggplot(final_df, aes(x=n,y=cum_var, color = factor(simulation)))+
-  geom_line()+
+total.var.plot = ggplot(final_df, aes(x=n,y=cum_var, group=simulation))+
+  geom_line(color = final_df$simulation)+
   geom_hline(yintercept = beta25$variance, linetype = "dashed", color = "red")+
   labs(x = "Sample Size", y = "Variance")+
   guides(color = "none")+
