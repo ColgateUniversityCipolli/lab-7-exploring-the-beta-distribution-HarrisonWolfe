@@ -4,6 +4,7 @@ library(e1071)
 library(patchwork)
 library(cumstats)
 library(nleqslv)
+library(xtable)
 
 tests = tibble()
 
@@ -35,6 +36,7 @@ beta.total = beta25 |>
 
 
 beta.graph = function(a,b){
+  name = paste("Beta (",a,",",b,")",sep = "")
   q1.fig.dat <- tibble(x = seq(-0.25, 1.25, length.out=1000))|>   # generate a grid of points
     mutate(beta.pdf = dbeta(x, a, b),                      # compute the beta PDF
            norm.pdf = dnorm(x,                                    # Gaussian distribution with
@@ -43,11 +45,13 @@ beta.graph = function(a,b){
   ggplot(data= q1.fig.dat)+                                              # specify data
     geom_line(aes(x=x, y=beta.pdf)) +                 # plot beta dist
     geom_hline(yintercept=0)+                                            # plot x axis
-    theme_bw()+                                                          # change theme
+    theme_minimal()+                                                          # change theme
     xlab("x")+                                                           # label x axis
     ylab("Density")+                                                     # label y axis
     scale_color_manual("", values = c("black", "grey"))+                 # change colors
-    theme(legend.position = "bottom")                                    # move legend to bottom
+    theme(legend.position = "bottom")+                                    # move legend to bottom
+    ggtitle(name)
+    
 }
 
 l = beta.graph(2,5)
@@ -55,7 +59,7 @@ m = beta.graph(0.5,0.5)
 n = beta.graph(5,5)
 o = beta.graph(5,2)
 
-grid.arrange(l,m,n,o, ncol = 2)
+(l + m) / (n + o)
 
 
 
@@ -117,7 +121,7 @@ set.seed(7272) # Set seed so we all get the same results.
 sample.size <- 500 # Specify sample details
 alpha <- 2
 beta <- 5
-x = seq(-0.25, 1.25, length.out=1000)
+x = seq(-0.1, 1.1, length.out=1000)
 beta.sample <- rbeta(n = sample.size,  # sample size
                      shape1 = alpha,   # alpha parameter
                      shape2 = beta)    # beta parameter
@@ -141,7 +145,8 @@ plot1 = ggplot(beta.df)+
   ylab("Density")+
   theme_minimal()+
   geom_line(data = beta.pdf, aes(x = x, y = beta, color = "Beta (2,5)"))+
-  guides(color = guide_legend(title = NULL))
+  guides(color = guide_legend(title = NULL))+
+  theme(legend.position = "bottom")
   
 
 #BETA A = 5 B = 5
@@ -149,7 +154,7 @@ set.seed(7272) # Set seed so we all get the same results.
 sample.size <- 500 # Specify sample details
 alpha <- 5
 beta <- 5
-x = seq(-0.25, 1.25, length.out=1000)
+x = seq(0, 1, length.out=1000)
 beta.sample <- rbeta(n = sample.size,  # sample size
                      shape1 = alpha,   # alpha parameter
                      shape2 = beta)    # beta parameter
@@ -173,14 +178,15 @@ plot2 = ggplot(beta.df)+
   ylab("Density")+
   theme_minimal()+
   geom_line(data = beta.pdf, aes(x = x, y = beta, color = "Beta (5,5)"))+
-  guides(color = guide_legend(title = NULL))
+  guides(color = guide_legend(title = NULL))+
+  theme(legend.position = "bottom")
             
 #BETA A = 5 B = 2
 set.seed(7272) # Set seed so we all get the same results.
 sample.size <- 500 # Specify sample details
 alpha <- 5
 beta <- 2
-x = seq(-0.25, 1.25, length.out=1000)
+x = seq(-0.1, 1.1, length.out=1000)
 beta.sample <- rbeta(n = sample.size,  # sample size
                      shape1 = alpha,   # alpha parameter
                      shape2 = beta)    # beta parameter
@@ -204,14 +210,15 @@ plot3 = ggplot(beta.df)+
   ylab("Density")+
   theme_minimal()+
   geom_line(data = beta.pdf, aes(x = x, y = beta, color = "Beta (5,2)"))+
-  guides(color = guide_legend(title = NULL))
+  guides(color = guide_legend(title = NULL))+
+  theme(legend.position = "bottom")
  
 #BETA A = 0.5 B = 0.5
 set.seed(7272) # Set seed so we all get the same results.
 sample.size <- 500 # Specify sample details
 alpha <- 0.5
 beta <- 0.5
-x = seq(-0.25, 1.25, length.out=1000)
+x = seq(-.1, 1.1, length.out=1000)
 beta.sample <- rbeta(n = sample.size,  # sample size
                      shape1 = alpha,   # alpha parameter
                      shape2 = beta)    # beta parameter
@@ -228,14 +235,15 @@ summary.statistics.of.beta.0.5.0.5 = tibble(beta.sample) |>
 
 
 plot4 = ggplot(beta.df)+
-  geom_histogram(aes(x = sample, y = after_stat(density)), bins = 30, fill = "purple")+
+  geom_histogram(aes(x = sample, y = after_stat(density)), bins = 38, fill = "purple")+
   geom_density(aes(x=sample, color = "Density of Sample"))+
   geom_hline(yintercept = 0)+
   xlab("Sample")+
   ylab("Density")+
   theme_minimal()+
   geom_line(data = beta.pdf, aes(x = x, y = beta, color = "Beta (0.5,0.5)"))+
-  guides(color = guide_legend(title = NULL))
+  guides(color = guide_legend(title = NULL))+
+  theme(legend.position = "bottom")
 
 (plot1 + plot2) / (plot3 + plot4)
 
@@ -262,22 +270,26 @@ cum.statistics = tibble(
 mean.plot = ggplot(cum.statistics, aes(x=n,y=cum_mean))+
   geom_line(color = "blue")+
   geom_hline(yintercept = beta25$mean, linetype = "dashed", color = "red")+
-  labs(x = "Sample Size", y = "Mean")
+  labs(x = "Sample Size", y = "Mean")+
+  theme_minimal()
 
 skew.plot = ggplot(cum.statistics, aes(x=n,y=cum_skew))+
   geom_line(color = "blue")+
   geom_hline(yintercept = beta25$skewness, linetype = "dashed", color = "red")+
-  labs(x = "Sample Size", y = "Skewness")
+  labs(x = "Sample Size", y = "Skewness")+
+  theme_minimal()
 
 kurt.plot = ggplot(cum.statistics, aes(x=n,y=cum_kurt))+
   geom_line(color = "blue")+
   geom_hline(yintercept = beta25$excess_kurtosis, linetype = "dashed", color = "red")+
-  labs(x = "Sample Size", y = "Kurtosis")
+  labs(x = "Sample Size", y = "Kurtosis")+
+  theme_minimal()
 
 var.plot = ggplot(cum.statistics, aes(x=n,y=cum_var))+
   geom_line(color = "blue")+
   geom_hline(yintercept = beta25$variance, linetype = "dashed", color = "red")+
-  labs(x = "Sample Size", y = "Variance")
+  labs(x = "Sample Size", y = "Variance")+
+  theme_minimal()
 
 
 (mean.plot + skew.plot) / (kurt.plot + var.plot)
@@ -375,25 +387,29 @@ mean.dist = ggplot(statistics.dist, aes(x=mean,y=after_stat(density)))+
   geom_histogram(fill = "blue")+
   theme_minimal()+
   labs(x= "Mean", y = "Occurances")+
-  geom_density(aes(x=mean))
+  geom_density(aes(x=mean))+
+  geom_hline(yintercept = 0)
 
 var.dist = ggplot(statistics.dist, aes(x=var,y=after_stat(density)))+
   geom_histogram(fill = "blue")+
   theme_minimal()+
   labs(x= "Variance", y = "Occurances")+
-  geom_density(aes(x=var))
+  geom_density(aes(x=var))+
+  geom_hline(yintercept = 0)
 
 kurt.dist = ggplot(statistics.dist)+
   geom_histogram(aes(x=kurt, y = after_stat(density)),fill = "blue",bins=28)+
   theme_minimal()+
   labs(x= "Excess Kurtosis", y = "Occurances")+
-  geom_density(aes(x=kurt))
+  geom_density(aes(x=kurt))+
+  geom_hline(yintercept = 0)
 
 skew.dist = ggplot(statistics.dist, aes(x=skew,y=after_stat(density)))+
   geom_histogram(fill = "blue",bins=26)+
   theme_minimal()+
   labs(x= "Skewness", y = "Occurances")+
-  geom_density(aes(x=skew))
+  geom_density(aes(x=skew))+
+  geom_hline(yintercept = 0)
 
 (mean.dist + skew.dist) / (kurt.dist + var.dist)
 
@@ -456,14 +472,16 @@ momplot <- tibble(x = seq(-0, 0.02, length.out = 1000)) |>
                  
 
 ggplot()+
-  geom_histogram(data = death.data, aes(x=prop.death, y = after_stat(density),color = "lightgrey"), bins = 36)+
-  geom_line(data = mleplot, aes(x=x,y=y,color = "MLE Estimate"))+
-  geom_line(data = momplot, aes(x=x,y=y,color = "MOM Estimate"))+
-  scale_color_manual(values = c("MLE Estimate" = "blue",
+  geom_histogram(data = death.data, aes(x=prop.death, y = after_stat(density),color = "lightgrey"), bins = 16,fill = "darkblue")+
+  geom_line(data = momplot, aes(x=x,y=y,color = "MOM Estimate"),linewidth = 2)+
+  geom_line(data = mleplot, aes(x=x,y=y,color = "MLE Estimate"),linetype = "dashed")+
+  scale_color_manual(values = c("MLE Estimate" = "green",
                                 "MOM Estimate" = "red"))+
   theme_minimal()+
   xlab("Proportion of Deaths")+
-  ylab("Density")
+  ylab("Density")+
+  guides(color = guide_legend(title = "Estimation Method"))+
+  geom_hline(yintercept = 0)
 
 
 #TASK 8
@@ -557,5 +575,47 @@ var(simulation$mle.beta) + (mean(simulation$mle.beta) - b.theta)^2,
 var(simulation$mom.beta) + (mean(simulation$mom.beta) - b.theta)^2)
 
 
-predictors = tibble(names,bias,presicion,MSE)
+(predictors = tibble(names,bias,presicion,MSE))
 
+#TABLES ADDDDDDDD IMPORTANTTTTT
+
+
+xtable(beta.total, digits = 4)
+\begin{table}[ht]
+\centering
+\begin{tabular}{rrrrrrrl}
+\hline
+& a & b & mean & variance & skewness & excess\_kurtosis & Method \\ 
+\hline
+1 & 2.00 & 5.00 & 0.29 & 0.03 & 0.60 & -0.12 & Formula \\ 
+2 & 5.00 & 5.00 & 0.50 & 0.02 & 0.00 & -0.46 & Formula \\ 
+3 & 5.00 & 2.00 & 0.71 & 0.03 & -0.60 & -0.12 & Formula \\ 
+4 & 0.50 & 0.50 & 0.50 & 0.12 & 0.00 & -1.50 & Formula \\ 
+5 & 2.00 & 5.00 & 0.29 & 0.03 & 0.60 & -0.12 & Derived \\ 
+6 & 5.00 & 5.00 & 0.50 & 0.02 & -0.00 & -0.46 & Derived \\ 
+7 & 5.00 & 2.00 & 0.71 & 0.03 & -0.60 & -0.12 & Derived \\ 
+8 & 0.50 & 0.50 & 0.50 & 0.12 & -0.00 & -1.50 & Derived \\ 
+\hline
+\end{tabular}
+\caption{Summary Statistics Using Different Methods for the Beta Dist.}
+\label{Table 1}
+\end{table}
+
+
+
+xtable(predictors, digits = 4)
+\begin{table}[ht]
+\centering
+\begin{tabular}{rlrrr}
+  \hline
+ & names & bias & presicion & MSE \\ 
+  \hline
+1 & alpha.mle & 0.07 & 2.13 & 0.48 \\ 
+  2 & alpha.mom & 0.08 & 1.83 & 0.55 \\ 
+  3 & beta.mle & 9.11 & 0.00 & 7134.56 \\ 
+  4 & beta.mom & 10.34 & 0.00 & 8290.05 \\ 
+   \hline
+\end{tabular}
+\caption{Predictors to determine how good our estimators are}
+\label{Table 2}
+\end{table}
